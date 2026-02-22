@@ -1,0 +1,24 @@
+import type { Config } from "tailwindcss";
+
+export default {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        rosePrimary: "#F472B6",
+        roseSoft: "#FBCFE8",
+        roseLight: "#FFF1F5",
+        cream: "#FFF7ED",
+        accentRed: "#BE123C",
+      },
+      fontFamily: {
+        heading: ["\"Betania Patmos In\"", "cursive"],
+        body: ["\"Betania Patmos In\"", "cursive"],
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config;
