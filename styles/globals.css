@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rosePrimary: "#F472B6",
+  --color-roseSoft: "#FBCFE8",
+  --color-roseLight: "#FFF1F5",
+  --color-cream: "#FFF7ED",
+  --color-accentRed: "#BE123C",
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sour-gummy), sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
+  background:
+    radial-gradient(1200px 600px at 10% 0%, #FBCFE8 0%, transparent 60%),
+    radial-gradient(900px 520px at 95% 20%, #FFF7ED 0%, transparent 55%),
+    linear-gradient(180deg, #FFF1F5 0%, #FFF1F5 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+}
+
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes floaty {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.floaty {
+  animation: floaty 3.6s ease-in-out infinite;
+}
