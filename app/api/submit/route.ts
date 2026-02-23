@@ -25,7 +25,7 @@ async function sendMail(opts: { subject: string; text: string }) {
   const resend = new Resend(apiKey);
 
   const { data, error } = await resend.emails.send({
-    from: `${process.env.EMAIL_FROM_LABEL ?? "Birthday Wishlist"} <onboarding@resend.dev>`,
+    from: `${process.env.EMAIL_FROM_LABEL} <onboarding@resend.dev>`,
     to,
     subject: opts.subject,
     text: opts.text,
