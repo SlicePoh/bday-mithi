@@ -75,6 +75,7 @@ export default function WelcomePage() {
   const ctaRef = useRef<HTMLAnchorElement>(null);
   const photoRefs = useRef<(HTMLDivElement | null)[]>([]);
   const wishRef = useRef<HTMLDivElement>(null);
+  const desktopWishRef = useRef<HTMLDivElement>(null);
   const sparkleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +111,7 @@ export default function WelcomePage() {
         "-=0.2"
       )
       .fromTo(
-        wishRef.current,
+        [wishRef.current, desktopWishRef.current].filter(Boolean),
         { opacity: 0, y: 24 },
         { opacity: 1, y: 0, duration: 0.8 },
         "-=0.3"
@@ -193,12 +194,12 @@ export default function WelcomePage() {
 
       <div
         ref={heroRef}
-        className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-4 pt-12 pb-20"
+        className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-4 pt-6 pb-16 sm:pt-12 sm:pb-20"
       >
         {/* Title */}
         <h1
           ref={titleRef}
-          className="text-center font-heading text-5xl leading-tight text-accentRed opacity-0 sm:text-6xl lg:text-7xl"
+          className="text-center font-heading text-4xl leading-tight text-accentRed opacity-0 sm:text-6xl lg:text-7xl"
         >
           Happy Birthday,
           <br />
@@ -207,15 +208,82 @@ export default function WelcomePage() {
 
         <p
           ref={subtitleRef}
-          className="mt-3 max-w-lg text-center text-base text-slate-600 opacity-0 sm:text-2xl"
+          className="mt-2 max-w-lg text-center text-sm text-slate-600 opacity-0 sm:text-2xl"
         >
           25 years young
         </p>
 
-        {/* 3×3 grid: photos in corners, wish card spans the center cell */}
+        {/* ── Mobile layout: 2×2 photo grid + wish card stacked ── */}
+        <div ref={wishRef} className="mt-8 w-full max-w-5xl opacity-0 sm:hidden">
+          {/* 2×2 photo grid */}
+          <div className="grid grid-cols-2 gap-3 px-2">
+            {photos.map((photo, i) => (
+              <div
+                key={i}
+                ref={(el) => { photoRefs.current[i] = el; }}
+                onTouchStart={() => handlePhotoEnter(i)}
+                onTouchEnd={() => handlePhotoLeave(i)}
+                className="relative cursor-pointer overflow-hidden rounded-2xl opacity-0"
+                style={{
+                  rotate: `${photo.rotate * 0.5}deg`,
+                  boxShadow: "0 6px 20px rgba(190,18,60,0.14)",
+                  aspectRatio: "4/5",
+                  willChange: "transform",
+                }}
+              >
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  className="object-cover transition-transform duration-500"
+                  style={{ transform: hoveredPhoto === i ? "scale(1.09)" : "scale(1)" }}
+                  sizes="45vw"
+                />
+                <div
+                  className="absolute inset-0 flex items-end justify-center pb-2"
+                  style={{ backgroundColor: hoveredPhoto === i ? "rgba(20,5,15,0.48)" : "rgba(0,0,0,0)", transition: "background-color 0.3s" }}
+                >
+                  <span
+                    className="px-2 text-center text-xs font-semibold leading-snug text-white"
+                    style={{
+                      opacity: hoveredPhoto === i ? 1 : 0,
+                      transform: hoveredPhoto === i ? "translateY(0px)" : "translateY(8px)",
+                      transition: "opacity 0.25s, transform 0.25s",
+                    }}
+                  >
+                    {photo.caption || "✨"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Wish card below photos on mobile */}
+          <div className="mx-2 mt-4 rounded-3xl border border-roseSoft/80 bg-white/80 p-4 text-center shadow-lg shadow-pink-200/40 backdrop-blur">
+            <div className="mb-2 font-heading text-lg text-accentRed">
+              A little something from me…
+            </div>
+            <p className="max-h-36 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-slate-700 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-pink-300">
+              {WISH || (
+                <span className="italic text-slate-400">
+                  All of your wishes may come true.
+                  I know this year has a rough start but I know it will turn around for the better soon.
+                  I&apos;m gonna be there through all the ups and downs, cheering you on and supporting you.
+                  Giving you a shoulder to cry on whenever the going gets tough.
+                  Just know that you&apos;re not alone in this. I&apos;m right there beside you, every step of the way.
+                  I know the birthday trip is missing as well, couldn&apos;t make it happen this time,
+                  but I promise we&apos;ll make up for it with many more adventures together in the future... and very soon!
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Desktop layout: 3×3 grid with photos in corners ── */}
+        <div className="mt-14 w-full max-w-5xl max-sm:hidden">
         <div
-          ref={wishRef}
-          className="mt-14 w-full max-w-5xl opacity-0"
+          ref={desktopWishRef}
+          className="w-full opacity-0"
           style={{
             display: "grid",
             gridTemplateColumns: "clamp(110px,15vw,180px) 1fr clamp(110px,15vw,180px)",
@@ -228,11 +296,9 @@ export default function WelcomePage() {
           {photos.map((photo, i) => (
             <div
               key={i}
-              ref={(el) => { photoRefs.current[i] = el; }}
-              onMouseEnter={() => handlePhotoEnter(i)}
-              onMouseLeave={() => handlePhotoLeave(i)}
-              onTouchStart={() => handlePhotoEnter(i)}
-              onTouchEnd={() => handlePhotoLeave(i)}
+              ref={(el) => { photoRefs.current[4 + i] = el; }}
+              onMouseEnter={() => handlePhotoEnter(4 + i)}
+              onMouseLeave={() => handlePhotoLeave(4 + i)}
               className="relative cursor-pointer overflow-hidden rounded-2xl opacity-0"
               style={{
                 gridColumn: photo.col,
@@ -242,7 +308,7 @@ export default function WelcomePage() {
                 width: "clamp(100px, 13vw, 165px)",
                 aspectRatio: "4/5",
                 willChange: "transform",
-                zIndex: hoveredPhoto === i ? 20 : photo.row === 1 ? 10 : 5,
+                zIndex: hoveredPhoto === 4 + i ? 20 : photo.row === 1 ? 10 : 5,
               }}
             >
               <Image
@@ -250,21 +316,20 @@ export default function WelcomePage() {
                 alt={photo.alt}
                 fill
                 className="object-cover transition-transform duration-500"
-                style={{ transform: hoveredPhoto === i ? "scale(1.09)" : "scale(1)" }}
-                sizes="(max-width: 640px) 110px, 165px"
+                style={{ transform: hoveredPhoto === 4 + i ? "scale(1.09)" : "scale(1)" }}
+                sizes="165px"
               />
-              {/* Overlay + caption */}
               <div
                 className="absolute inset-0 flex items-end justify-center pb-3 transition-colors duration-300"
                 style={{
-                  backgroundColor: hoveredPhoto === i ? "rgba(20,5,15,0.48)" : "rgba(0,0,0,0)",
+                  backgroundColor: hoveredPhoto === 4 + i ? "rgba(20,5,15,0.48)" : "rgba(0,0,0,0)",
                 }}
               >
                 <span
                   className="px-2 text-center text-xs font-semibold leading-snug text-white"
                   style={{
-                    opacity: hoveredPhoto === i ? 1 : 0,
-                    transform: hoveredPhoto === i ? "translateY(0px)" : "translateY(8px)",
+                    opacity: hoveredPhoto === 4 + i ? 1 : 0,
+                    transform: hoveredPhoto === 4 + i ? "translateY(0px)" : "translateY(8px)",
                     transition: "opacity 0.25s, transform 0.25s",
                   }}
                 >
@@ -274,7 +339,7 @@ export default function WelcomePage() {
             </div>
           ))}
 
-          {/* Wish card — spans center 1×1 cell with padding so it doesn't touch the photos */}
+          {/* Wish card — spans center column, rows 1–3 */}
           <div
             className="rounded-3xl border border-roseSoft/80 bg-white/80 p-5 text-center shadow-lg shadow-pink-200/40 backdrop-blur sm:p-8"
             style={{ gridColumn: 2, gridRow: "1 / 4", width: "100%" }}
@@ -286,23 +351,24 @@ export default function WelcomePage() {
               {WISH || (
                 <span className="italic text-slate-400">
                   All of your wishes may come true.
-                  I know this year has a rough start but I know it will turn around of the better soon.
-                  I'm gonna be there through all the ups and downs, cheering you on and supporting you.
-                  Giving you shoulder to cry on whenever the going gets tough.
-                  Just know that you're not alone in this. I'm right there beside you, every step of the way.
-                  I know the birthday trip is missing as well, couldn't make it happen this time,
-                  but I promise we'll make up for it with many more adventures together in the future... and very soon!
+                  I know this year has a rough start but I know it will turn around for the better soon.
+                  I&apos;m gonna be there through all the ups and downs, cheering you on and supporting you.
+                  Giving you a shoulder to cry on whenever the going gets tough.
+                  Just know that you&apos;re not alone in this. I&apos;m right there beside you, every step of the way.
+                  I know the birthday trip is missing as well, couldn&apos;t make it happen this time,
+                  but I promise we&apos;ll make up for it with many more adventures together in the future... and very soon!
                 </span>
               )}
             </p>
           </div>
+        </div>
         </div>
 
         {/* CTA button */}
         <Link
           href="/gifts"
           ref={ctaRef}
-          className="group mt-12 inline-flex items-center gap-2 rounded-full bg-rose-300 px-8 py-4 font-heading text-lg font-semibold text-white opacity-0 shadow-lg shadow-rose-300/50 transition-all duration-200 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-rose-400/60 active:scale-95"
+          className="group mt-8 inline-flex items-center gap-2 rounded-full bg-rose-300 px-6 py-3 font-heading text-base font-semibold text-white opacity-0 shadow-lg shadow-rose-300/50 transition-all duration-200 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-rose-400/60 active:scale-95 sm:mt-12 sm:px-8 sm:py-4 sm:text-lg"
         >
           Open your gifts
           <span className="inline-block transition-transform duration-200 group-hover:translate-x-1.5">
