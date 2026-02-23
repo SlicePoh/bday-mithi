@@ -280,9 +280,10 @@ export default function WelcomePage() {
         </div>
 
         {/* ── Desktop layout: 3×3 grid with photos in corners ── */}
+        <div className="mt-14 w-full max-w-5xl max-sm:hidden">
         <div
           ref={desktopWishRef}
-          className="mt-14 w-full max-w-5xl opacity-0 max-sm:hidden"
+          className="w-full opacity-0"
           style={{
             display: "grid",
             gridTemplateColumns: "clamp(110px,15vw,180px) 1fr clamp(110px,15vw,180px)",
@@ -360,6 +361,7 @@ export default function WelcomePage() {
               )}
             </p>
           </div>
+        </div>
         </div>
 
         {/* CTA button */}
