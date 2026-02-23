@@ -20,16 +20,30 @@ export function EditableLinkModal({
 }: EditableLinkModalProps) {
   const [visible, setVisible] = useState(open);
   const [value, setValue] = useState(initialLink ?? "");
+  const [touched, setTouched] = useState(false);
 
   const backdropRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const canSave = useMemo(() => value.trim().length > 0, [value]);
+  const isValidUrl = useMemo(() => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    try {
+      const url = new URL(trimmed);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, [value]);
+
+  const canSave = isValidUrl;
+  const showError = touched && value.trim().length > 0 && !isValidUrl;
 
   useEffect(() => {
     if (open) {
       setVisible(true);
       setValue(initialLink ?? "");
+      setTouched(false);
     } else if (visible) {
       const backdrop = backdropRef.current;
       const panel = panelRef.current;
@@ -99,9 +113,19 @@ export function EditableLinkModal({
         <label className="mt-4 block text-sm font-medium text-slate-700">
           New link
         </label>
-        <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="https://..."
-          className="mt-2 w-full rounded-2xl border border-roseSoft/90 bg-roseLight/40 px-4 py-3 text-slate-800 outline-none focus:border-rosePrimary"
-          autoFocus/>
+        <input value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => setTouched(true)}
+          placeholder="https://..."
+          className={`mt-2 w-full rounded-2xl border bg-roseLight/40 px-4 py-3 text-slate-800 outline-none transition-colors ${
+            showError
+              ? "border-red-400 focus:border-red-500"
+              : "border-roseSoft/90 focus:border-rosePrimary"
+          }`}
+          autoFocus />
+        {showError && (
+          <p className="mt-1.5 text-xs text-red-500">Please enter a valid URL (must start with https:// or http://).</p>
+        )}
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => {
               if (!canSave) return;

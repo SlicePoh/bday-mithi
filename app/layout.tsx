@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Poppins } from "next/font/google";
+import { Sour_Gummy } from "next/font/google";
 
 import "../styles/globals.css";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 
-const playfair = Playfair_Display({
+const sourGummy = Sour_Gummy({
   subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["400", "500", "600", "700"],
-});
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  variable: "--font-poppins",
-  weight: ["400", "500", "600"],
+  variable: "--font-sour-gummy",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${playfair.variable} ${poppins.variable}`}>
+    <html lang="en" className={sourGummy.variable}>
       <body className="relative min-h-dvh font-body text-slate-800">
         <div className="relative z-10 flex min-h-dvh flex-col">
           <Header />

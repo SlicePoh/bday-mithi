@@ -1,551 +1,326 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-import type { Gift } from "../data/gifts";
-import { initialGifts } from "../data/gifts";
-import { EmptyGiftCard } from "../components/EmptyGiftCard";
-import { GiftCard } from "../components/GiftCard";
+//  Birthday wish text (fill this in) 
+const WISH = ``;
 
-const STORAGE_KEY = "bday-mithi:wishlist:v1";
+//  Photos (place bdaypic1.jpg – bdaypic4.jpg in /public/assets/)
+// Rotation rules: left col tilts left (neg), right col tilts right (pos)
+//                 top row leans outward more, bottom row less
+const photos = [
+  {
+    src: "/assets/bdaypic1.jpg",
+    rotate: -8,   // top-left
+    alt: "Birthday photo 1",
+    col: 1, row: 1,
+    caption: "So sassy back then 🥹",
+  },
+  {
+    src: "/assets/bdaypic2.jpg",
+    rotate: 8,    // top-right (mirror of top-left)
+    alt: "Birthday photo 2",
+    col: 3, row: 1,
+    caption: "Cutie in Mohunbagan colors",
+  },
+  {
+    src: "/assets/bdaypic3.jpg",
+    rotate: 9,    // bottom-left (opposite direction to top-left)
+    alt: "Birthday photo 3",
+    col: 1, row: 3,
+    caption: "In her element ",
+  },
+  {
+    src: "/assets/bdaypic4.jpg",
+    rotate: -9,   // bottom-right (mirror of bottom-left)
+    alt: "Birthday photo 4",
+    col: 3, row: 3,
+    caption: "One of many Baddie moments ",
+  },
+];
 
-type StoredGift = {
-  id: number;
-  status: Gift["status"];
-  link?: string | null;
-  keepConfirmed?: boolean;
-  // Used to detect whether a stored link was user-edited or just the old default.
-  baseLink?: string | null;
-  // Used to detect whether a stored status was user-edited or just the old default.
-  baseStatus?: Gift["status"];
-};
 
-const INITIAL_LINK_BY_ID = new Map<number, string | null>(
-  initialGifts.map((g) => [g.id, g.link])
-);
 
-const INITIAL_STATUS_BY_ID = new Map<number, Gift["status"]>(
-  initialGifts.map((g) => [g.id, g.status])
-);
+// Fixed sparkle positions (static to avoid hydration mismatch)
+const SPARKLES = [
+  { id: 0,  x: "8%",  y: "12%", size: 9,  delay: 0.0, dur: 2.1 },
+  { id: 1,  x: "20%", y: "6%",  size: 7,  delay: 0.4, dur: 1.7 },
+  { id: 2,  x: "37%", y: "9%",  size: 11, delay: 0.7, dur: 2.4 },
+  { id: 3,  x: "55%", y: "4%",  size: 8,  delay: 0.2, dur: 1.9 },
+  { id: 4,  x: "72%", y: "11%", size: 10, delay: 1.1, dur: 2.2 },
+  { id: 5,  x: "88%", y: "7%",  size: 7,  delay: 0.6, dur: 1.6 },
+  { id: 6,  x: "5%",  y: "35%", size: 8,  delay: 1.3, dur: 2.0 },
+  { id: 7,  x: "92%", y: "40%", size: 9,  delay: 0.9, dur: 1.8 },
+  { id: 8,  x: "15%", y: "60%", size: 7,  delay: 0.3, dur: 2.3 },
+  { id: 9,  x: "80%", y: "65%", size: 10, delay: 1.5, dur: 2.0 },
+  { id: 10, x: "30%", y: "75%", size: 8,  delay: 0.8, dur: 1.7 },
+  { id: 11, x: "65%", y: "80%", size: 7,  delay: 1.2, dur: 2.1 },
+  { id: 12, x: "48%", y: "88%", size: 9,  delay: 0.5, dur: 1.9 },
+  { id: 13, x: "10%", y: "85%", size: 6,  delay: 1.7, dur: 2.3 },
+  { id: 14, x: "90%", y: "82%", size: 8,  delay: 0.1, dur: 1.6 },
+  { id: 15, x: "43%", y: "48%", size: 7,  delay: 2.0, dur: 2.5 },
+  { id: 16, x: "70%", y: "52%", size: 6,  delay: 1.4, dur: 1.8 },
+  { id: 17, x: "58%", y: "30%", size: 9,  delay: 0.6, dur: 2.2 },
+];
 
-function mergeGifts(base: Gift[], saved: StoredGift[]) {
-  const byId = new Map<number, StoredGift>();
-  for (const gift of saved) byId.set(gift.id, gift);
+const EMOJI_ROW = ["", "", "", "", ""];
 
-  return base.map((gift) => {
-    const fromStorage = byId.get(gift.id);
-    if (!fromStorage) return gift;
+export default function WelcomePage() {
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const ctaRef = useRef<HTMLAnchorElement>(null);
+  const photoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const wishRef = useRef<HTMLDivElement>(null);
+  const sparkleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const heroRef = useRef<HTMLDivElement>(null);
 
-    const baseLink = gift.link ?? null;
-    const storedLink = (fromStorage.link ?? null) as string | null;
-
-    let mergedLink = storedLink;
-    if (!mergedLink) {
-      mergedLink = baseLink;
-    } else if (Object.prototype.hasOwnProperty.call(fromStorage, "baseLink")) {
-      const storedBaseLink = fromStorage.baseLink ?? null;
-      if (storedBaseLink !== baseLink && storedLink === storedBaseLink) {
-        mergedLink = baseLink;
-      }
-    } else {
-      // Legacy payload: if a stored Google link is overriding a non-Google default, prefer the new default.
-      if (
-        baseLink &&
-        typeof storedLink === "string" &&
-        storedLink !== baseLink &&
-        /google\./i.test(storedLink) &&
-        !/google\./i.test(baseLink)
-      ) {
-        mergedLink = baseLink;
-      }
-    }
-
-    let mergedStatus: Gift["status"] = fromStorage.status;
-    if (Object.prototype.hasOwnProperty.call(fromStorage, "baseStatus")) {
-      const storedBaseStatus = fromStorage.baseStatus;
-      if (storedBaseStatus && storedBaseStatus !== gift.status) {
-        if (mergedStatus === storedBaseStatus) {
-          mergedStatus = gift.status;
-        }
-      }
-    } else {
-      // Legacy payload: we never had a UI to turn a selected item back to empty.
-      // So if storage says "empty" but the current default is "selected", prefer the new default.
-      if (gift.status === "selected" && fromStorage.status === "empty") {
-        mergedStatus = "selected";
-      }
-    }
-
-    return {
-      ...gift,
-      status: mergedStatus,
-      link: mergedLink,
-      keepConfirmed:
-        typeof fromStorage.keepConfirmed === "boolean"
-          ? fromStorage.keepConfirmed
-          : gift.keepConfirmed,
-    };
-  });
-}
-
-function isValidStoredGiftArray(value: unknown): value is StoredGift[] {
-  if (!Array.isArray(value)) return false;
-  return value.every(
-    (g) =>
-      g &&
-      typeof g === "object" &&
-      typeof (g as StoredGift).id === "number" &&
-      (g as StoredGift).status &&
-      ((g as StoredGift).status === "selected" ||
-        (g as StoredGift).status === "empty") &&
-      (typeof (g as StoredGift).link === "undefined" ||
-        typeof (g as StoredGift).link === "string" ||
-        (g as StoredGift).link === null) &&
-      (typeof (g as StoredGift).keepConfirmed === "undefined" ||
-        typeof (g as StoredGift).keepConfirmed === "boolean") &&
-      (typeof (g as StoredGift).baseLink === "undefined" ||
-        typeof (g as StoredGift).baseLink === "string" ||
-        (g as StoredGift).baseLink === null) &&
-      (typeof (g as StoredGift).baseStatus === "undefined" ||
-        (g as StoredGift).baseStatus === "selected" ||
-        (g as StoredGift).baseStatus === "empty")
-  );
-}
-
-function fireConfetti(root: HTMLDivElement) {
-  const colors = ["#F472B6", "#FBCFE8", "#FFF7ED", "#BE123C"];
-  const pieces = 26;
-  const now = Date.now();
-
-  for (let i = 0; i < pieces; i++) {
-    const el = document.createElement("span");
-    el.setAttribute("data-confetti", `${now}-${i}`);
-    el.style.position = "absolute";
-    el.style.left = `${50 + (Math.random() * 18 - 9)}%`;
-    el.style.top = `${18 + Math.random() * 4}%`;
-    el.style.width = `${6 + Math.random() * 8}px`;
-    el.style.height = `${6 + Math.random() * 10}px`;
-    el.style.borderRadius = "9999px";
-    el.style.background = colors[Math.floor(Math.random() * colors.length)]!;
-    el.style.opacity = "0";
-    root.appendChild(el);
-
-    gsap
-      .timeline({
-        onComplete: () => {
-          el.remove();
-        },
-      })
-      .to(el, { opacity: 1, duration: 0.08, ease: "power1.out" })
-      .to(el, {
-        x: (Math.random() * 2 - 1) * 140,
-        y: 260 + Math.random() * 160,
-        rotation: (Math.random() * 2 - 1) * 720,
-        duration: 0.9 + Math.random() * 0.4,
-        ease: "power3.out",
-      })
-      .to(el, { opacity: 0, duration: 0.18, ease: "power1.in" }, "-=0.2");
-  }
-}
-
-export default function Page() {
-  const [gifts, setGifts] = useState<Gift[]>(initialGifts);
-  const [hydrated, setHydrated] = useState(false);
-
-  const [wishesDraft, setWishesDraft] = useState("");
-  const [wishesSaved, setWishesSaved] = useState("");
-  const [wishesSavedPulse, setWishesSavedPulse] = useState(false);
-
-  const heroTitleRef = useRef<HTMLHeadingElement | null>(null);
-  const heroSubRef = useRef<HTMLParagraphElement | null>(null);
-  const loveCardRef = useRef<HTMLDivElement | null>(null);
-  const gridRef = useRef<HTMLDivElement | null>(null);
-  const confettiRootRef = useRef<HTMLDivElement | null>(null);
-
-  const petals = useMemo(
-    () =>
-      Array.from({ length: 10 }).map((_, idx) => ({
-        id: idx,
-        left: `${6 + Math.random() * 88}%`,
-        top: `${10 + Math.random() * 40}%`,
-        size: 10 + Math.floor(Math.random() * 18),
-        opacity: 0.25 + Math.random() * 0.35,
-        rotate: -25 + Math.random() * 50,
-      })),
-    []
-  );
-
-  // Hydrate from localStorage (optional enhancement)
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setHydrated(true);
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as {
-        gifts?: unknown;
-        wishesSaved?: unknown;
-      };
-
-      if (isValidStoredGiftArray(parsed.gifts)) {
-        setGifts(mergeGifts(initialGifts, parsed.gifts));
-      }
-
-      if (typeof parsed.wishesSaved === "string") {
-        setWishesSaved(parsed.wishesSaved);
-        setWishesDraft(parsed.wishesSaved);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setHydrated(true);
-    }
-  }, []);
+  const [hoveredPhoto, setHoveredPhoto] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      const giftsToStore: StoredGift[] = gifts.map((g) => ({
-        id: g.id,
-        status: g.status,
-        link: g.link,
-        keepConfirmed: g.keepConfirmed,
-        baseLink: INITIAL_LINK_BY_ID.get(g.id) ?? null,
-        baseStatus: INITIAL_STATUS_BY_ID.get(g.id) ?? g.status,
-      }));
-
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ gifts: giftsToStore, wishesSaved })
-      );
-    } catch {
-      // ignore
-    }
-  }, [gifts, wishesSaved, hydrated]);
-
-  // GSAP animations
-  useEffect(() => {
-    if (!hydrated) return;
-
     gsap.registerPlugin(ScrollTrigger);
 
-    const heroTitle = heroTitleRef.current;
-    const heroSub = heroSubRef.current;
-    if (heroTitle && heroSub) {
-      gsap
-        .timeline()
-        .from(heroTitle, {
-          opacity: 0,
-          y: 18,
-          duration: 0.7,
-          ease: "power3.out",
-        })
-        .from(
-          heroSub,
-          { opacity: 0, y: 14, duration: 0.6, ease: "power3.out" },
-          "-=0.35"
-        );
-    }
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-    const loveCard = loveCardRef.current;
-    if (loveCard) {
-      gsap.to(loveCard, {
-        y: -10,
+    tl.fromTo(
+      titleRef.current,
+      { opacity: 0, y: -30, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.9 }
+    )
+      .fromTo(
+        subtitleRef.current,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.7 },
+        "-=0.4"
+      )
+      .fromTo(
+        photoRefs.current.filter(Boolean),
+        { opacity: 0, y: 50, scale: 0.88 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.75,
+          stagger: 0.14,
+          ease: "back.out(1.2)",
+        },
+        "-=0.2"
+      )
+      .fromTo(
+        wishRef.current,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.8 },
+        "-=0.3"
+      )
+      .fromTo(
+        ctaRef.current,
+        { opacity: 0, scale: 0.85, y: 12 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" },
+        "-=0.35"
+      );
+
+    // Sparkle twinkle loop
+    sparkleRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const s = SPARKLES[i];
+      if (!s) return;
+      gsap.to(el, {
+        opacity: 0.85,
+        scale: 1.4,
+        duration: s.dur,
+        delay: s.delay,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+    });
+
+    // Subtle parallax hero
+    if (heroRef.current) {
+      gsap.to(heroRef.current, {
+        y: -20,
         ease: "none",
         scrollTrigger: {
-          trigger: loveCard,
-          start: "top bottom",
+          trigger: heroRef.current,
+          start: "top top",
           end: "bottom top",
           scrub: true,
         },
       });
     }
 
-    const grid = gridRef.current;
-    if (grid) {
-      const cards = Array.from(grid.querySelectorAll("[data-gift-card]"));
-      gsap.from(cards, {
-        opacity: 0,
-        y: 40,
-        stagger: 0.15,
-        duration: 0.8,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: grid,
-          start: "top 80%",
-          once: true,
-        },
-      });
-    }
+    return () => ScrollTrigger.getAll().forEach((t) => t.kill());
+  }, []);
 
-    return () => {
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
-  }, [hydrated]);
-
-  // Floating petals
-  useEffect(() => {
-    const nodes = document.querySelectorAll("[data-petal]");
-    nodes.forEach((node, idx) => {
-      gsap.to(node, {
-        y: 18 + Math.random() * 18,
-        x: (Math.random() * 2 - 1) * 10,
-        rotation: (Math.random() * 2 - 1) * 18,
-        duration: 2.8 + idx * 0.15,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1,
-      });
-    });
-  }, [petals]);
-
-  // Love note typewriter
-  const loveNote =
-    "Happy birthday, my love. You send wishlists as jokes… so I made one real. Pick what you want, swap links, and make it perfectly you.";
-  const [typed, setTyped] = useState("");
-  useEffect(() => {
-    if (!hydrated) return;
-
-    const counter = { p: 0 };
-    setTyped("");
-
-    const tween = gsap.to(counter, {
-      p: loveNote.length,
-      duration: 2.6,
-      ease: "none",
-      onUpdate: () => {
-        const n = Math.floor(counter.p);
-        setTyped(loveNote.slice(0, n));
-      },
-    });
-
-    return () => {
-      tween.kill();
-    };
-  }, [hydrated]);
-
-  const updateLink = (id: number, newLink: string) => {
-    setGifts((prev) =>
-      prev.map((g) =>
-        g.id === id ? { ...g, link: newLink, keepConfirmed: false } : g
-      )
-    );
-    const root = confettiRootRef.current;
-    if (root) fireConfetti(root);
+  const handlePhotoEnter = (i: number) => {
+    setHoveredPhoto(i);
+    const el = photoRefs.current[i];
+    if (!el) return;
+    gsap.to(el, { y: -14, scale: 1.07, duration: 0.35, ease: "power2.out" });
   };
 
-  const saveSuggestion = (id: number, link: string) => {
-    setGifts((prev) =>
-      prev.map((g) =>
-        g.id === id
-          ? { ...g, link, status: "selected", keepConfirmed: false }
-          : g
-      )
-    );
-    const root = confettiRootRef.current;
-    if (root) fireConfetti(root);
+  const handlePhotoLeave = (i: number) => {
+    setHoveredPhoto(null);
+    const el = photoRefs.current[i];
+    if (!el) return;
+    gsap.to(el, { y: 0, scale: 1, duration: 0.4, ease: "power2.inOut" });
   };
-
-  const saveWishes = () => {
-    setWishesSaved(wishesDraft);
-    setWishesSavedPulse(true);
-    const root = confettiRootRef.current;
-    if (root) fireConfetti(root);
-    window.setTimeout(() => setWishesSavedPulse(false), 500);
-  };
-
-  const keepGift = (id: number) => {
-    setGifts((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, keepConfirmed: true } : g))
-    );
-    const root = confettiRootRef.current;
-    if (root) fireConfetti(root);
-  };
-
-  const selectedGifts = useMemo(
-    () => gifts.filter((g) => g.status === "selected"),
-    [gifts]
-  );
-
-  const canSubmit = useMemo(() => {
-    if (!hydrated) return false;
-    if (selectedGifts.length === 0) return false;
-    return selectedGifts.every((g) => !!g.keepConfirmed && !!g.link);
-  }, [hydrated, selectedGifts]);
 
   return (
-    <div className="relative">
-      <div
-        ref={confettiRootRef}
-        className="pointer-events-none fixed inset-0 z-50"
-      />
-
-      {/* Tiny floating hearts */}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-20 select-none opacity-60">
-        <div className="floaty text-rosePrimary">♥</div>
-        <div className="floaty -mt-1 ml-3 text-rosePrimary/80">♥</div>
-        <div className="floaty -mt-1 ml-1 text-rosePrimary/70">♥</div>
+    <div className="relative min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-linear-to-br from-rose-50 via-pink-50 to-rose-100">
+      {/* Background sparkles */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {SPARKLES.map((s, i) => (
+          <div
+            key={s.id}
+            ref={(el) => { sparkleRefs.current[i] = el; }}
+            className="absolute opacity-0"
+            style={{ left: s.x, top: s.y }}
+          >
+            <svg width={s.size} height={s.size} viewBox="0 0 16 16" fill="none">
+              <path
+                d="M8 0 L9.2 6.8 L16 8 L9.2 9.2 L8 16 L6.8 9.2 L0 8 L6.8 6.8 Z"
+                fill="#F472B6"
+                fillOpacity="0.65"
+              />
+            </svg>
+          </div>
+        ))}
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-2xl border border-roseSoft/70 bg-white/70 p-8 shadow-lg shadow-pink-200/40 sm:p-12">
-          <div className="pointer-events-none absolute inset-0">
-            {petals.map((p) => (
-              <div key={p.id} data-petal className="absolute rounded-[999px] bg-roseSoft"
-                style={{
-                  left: p.left,
-                  top: p.top,
-                  width: p.size,
-                  height: Math.max(10, Math.floor(p.size * 1.35)),
-                  opacity: p.opacity,
-                  transform: `rotate(${p.rotate}deg)`,
-                  filter: "blur(0.2px)",
-                }}
-              />
-            ))}
-          </div>
+      <div
+        ref={heroRef}
+        className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-4 pt-12 pb-20"
+      >
+        {/* Title */}
+        <h1
+          ref={titleRef}
+          className="text-center font-heading text-5xl leading-tight text-accentRed opacity-0 sm:text-6xl lg:text-7xl"
+        >
+          Happy Birthday,
+          <br />
+          <span className="text-rosePrimary">Mithi </span>
+        </h1>
 
-          <div className="relative z-10">
-            <h1 ref={heroTitleRef} className="font-heading text-3xl leading-tight text-accentRed sm:text-5xl" >
-              For the Girl Who Sends Wishlists as Jokes
-            </h1>
-            <p ref={heroSubRef} className="mt-4 max-w-xl text-base text-slate-700 sm:text-lg" >
-              This year, I took notes.
-            </p>
-          </div>
-        </section>
+        <p
+          ref={subtitleRef}
+          className="mt-3 max-w-lg text-center text-base text-slate-600 opacity-0 sm:text-2xl"
+        >
+          25 years young
+        </p>
 
-        {/* Love Note */}
-        <section className="mt-10">
-          <div
-            ref={loveCardRef}
-            className="mx-auto max-w-3xl rounded-2xl border border-roseSoft/80 bg-white p-6 text-center shadow-lg shadow-pink-200/40 sm:p-8"
-          >
-            <div className="font-heading text-2xl text-accentRed">
-              A small love note
-            </div>
-            <p className="mt-4 text-base leading-relaxed text-slate-700 sm:text-lg">
-              {typed}
-              <span className="ml-0.5 inline-block h-5 w-0.5 translate-y-1 bg-rosePrimary/70" />
-            </p>
-          </div>
-        </section>
-
-        {/* Gift Grid */}
-        <section className="mt-12">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="font-heading text-2xl text-accentRed sm:text-3xl">
-                Your gifts (editable)
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Swap links, keep what you love, and fill the empty ones.
-              </p>
-            </div>
-          </div>
-
-          <div
-            ref={gridRef}
-            className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {gifts.map((gift) => (
-              <div key={gift.id} data-gift-card>
-                {gift.status === "selected" ? (
-                  <GiftCard
-                    gift={gift}
-                    onUpdateLink={updateLink}
-                    onKeep={keepGift}
-                  />
-                ) : (
-                  <EmptyGiftCard gift={gift} onSaveSuggestion={saveSuggestion} />
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Add More Wishes */}
-        <section className="mt-12">
-          <div className="rounded-2xl border border-roseSoft/80 bg-linear-to-br from-rose-100 to-pink-50 p-6 shadow-lg shadow-pink-200/30 sm:p-8">
-            <h3 className="font-heading text-2xl text-accentRed">
-              Anything else you secretly want?
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Add it here — I’m listening.
-            </p>
-
-            <textarea
-              value={wishesDraft}
-              onChange={(e) => setWishesDraft(e.target.value)}
-              placeholder="Tell me your secret wishlist thoughts..."
-              className="mt-4 min-h-28 w-full resize-none rounded-2xl border border-roseSoft/90 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-rosePrimary"
-            />
-
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={saveWishes}
-                className="w-full rounded-2xl bg-rosePrimary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-200/40 transition-transform active:scale-[0.98] sm:w-auto"
-              >
-                Save
-              </button>
-              <div
-                className={`text-sm text-slate-600 transition-opacity ${
-                  wishesSavedPulse ? "opacity-100" : "opacity-70"
-                }`}
-              >
-                {wishesSaved ? "Saved." : "Not saved yet."}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Submit */}
-        <section className="mt-10">
-          <div className="rounded-2xl border border-roseSoft/80 bg-white p-6 shadow-lg shadow-pink-200/30 sm:p-8">
-            <h3 className="font-heading text-2xl text-accentRed">
-              When you’re done…
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Keep every selected item and add links, then submit.
-            </p>
-
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={async () => {
-                if (!canSubmit) return;
-                const res = await fetch("/api/submit", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    gifts: selectedGifts,
-                    wishes: wishesSaved,
-                  }),
-                });
-
-                if (!res.ok) {
-                  const txt = await res.text();
-                  alert(
-                    txt ||
-                      "Submit failed. If this is your first time, you may need to set email env vars."
-                  );
-                  return;
-                }
-
-                alert("Submitted! 💌");
+        {/* 3×3 grid: photos in corners, wish card spans the center cell */}
+        <div
+          ref={wishRef}
+          className="mt-14 w-full max-w-5xl opacity-0"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "clamp(110px,15vw,180px) 1fr clamp(110px,15vw,180px)",
+            gridTemplateRows: "clamp(110px,15vw,180px) 1fr clamp(110px,15vw,180px)",
+            alignItems: "center",
+            justifyItems: "center",
+          }}
+        >
+          {/* Corner photos */}
+          {photos.map((photo, i) => (
+            <div
+              key={i}
+              ref={(el) => { photoRefs.current[i] = el; }}
+              onMouseEnter={() => handlePhotoEnter(i)}
+              onMouseLeave={() => handlePhotoLeave(i)}
+              onTouchStart={() => handlePhotoEnter(i)}
+              onTouchEnd={() => handlePhotoLeave(i)}
+              className="relative cursor-pointer overflow-hidden rounded-2xl opacity-0"
+              style={{
+                gridColumn: photo.col,
+                gridRow: photo.row,
+                rotate: `${photo.rotate}deg`,
+                boxShadow: "0 10px 32px rgba(190,18,60,0.16)",
+                width: "clamp(100px, 13vw, 165px)",
+                aspectRatio: "4/5",
+                willChange: "transform",
+                zIndex: hoveredPhoto === i ? 20 : photo.row === 1 ? 10 : 5,
               }}
-              className="mt-4 w-full rounded-2xl bg-rosePrimary px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-200/40 transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
-              Submit
-            </button>
+              <Image
+                src={photo.src}
+                alt={photo.alt}
+                fill
+                className="object-cover transition-transform duration-500"
+                style={{ transform: hoveredPhoto === i ? "scale(1.09)" : "scale(1)" }}
+                sizes="(max-width: 640px) 110px, 165px"
+              />
+              {/* Overlay + caption */}
+              <div
+                className="absolute inset-0 flex items-end justify-center pb-3 transition-colors duration-300"
+                style={{
+                  backgroundColor: hoveredPhoto === i ? "rgba(20,5,15,0.48)" : "rgba(0,0,0,0)",
+                }}
+              >
+                <span
+                  className="px-2 text-center text-xs font-semibold leading-snug text-white"
+                  style={{
+                    opacity: hoveredPhoto === i ? 1 : 0,
+                    transform: hoveredPhoto === i ? "translateY(0px)" : "translateY(8px)",
+                    transition: "opacity 0.25s, transform 0.25s",
+                  }}
+                >
+                  {photo.caption || "✨"}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* Wish card — spans center 1×1 cell with padding so it doesn't touch the photos */}
+          <div
+            className="rounded-3xl border border-roseSoft/80 bg-white/80 p-5 text-center shadow-lg shadow-pink-200/40 backdrop-blur sm:p-8"
+            style={{ gridColumn: 2, gridRow: "1 / 4", width: "100%" }}
+          >
+            <div className="mb-3 font-heading text-xl text-accentRed sm:text-2xl">
+              A little something from me…
+            </div>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 sm:text-base">
+              {WISH || (
+                <span className="italic text-slate-400">
+                  All of your wishes may come true.
+                  I know this year has a rough start but I know it will turn around of the better soon.
+                  I'm gonna be there through all the ups and downs, cheering you on and supporting you.
+                  Giving you shoulder to cry on whenever the going gets tough.
+                  Just know that you're not alone in this. I'm right there beside you, every step of the way.
+                  I know the birthday trip is missing as well, couldn't make it happen this time,
+                  but I promise we'll make up for it with many more adventures together in the future... and very soon!
+                </span>
+              )}
+            </p>
           </div>
-        </section>
+        </div>
+
+        {/* CTA button */}
+        <Link
+          href="/gifts"
+          ref={ctaRef}
+          className="group mt-12 inline-flex items-center gap-2 rounded-full bg-rose-300 px-8 py-4 font-heading text-lg font-semibold text-white opacity-0 shadow-lg shadow-rose-300/50 transition-all duration-200 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-rose-400/60 active:scale-95"
+        >
+          Open your gifts
+          <span className="inline-block transition-transform duration-200 group-hover:translate-x-1.5">
+            
+          </span>
+        </Link>
+
+        {/* Emoji row */}
+        <div className="mt-8 flex select-none gap-3 text-2xl">
+          {EMOJI_ROW.map((emoji, i) => (
+            <span
+              key={i}
+              className="inline-block cursor-default transition-transform duration-200 hover:scale-125"
+            >
+              {emoji}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

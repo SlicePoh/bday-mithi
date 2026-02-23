@@ -9,10 +9,10 @@ import { EditableLinkModal } from "./EditableLinkModal";
 interface GiftCardProps {
   gift: Gift;
   onUpdateLink: (id: number, newLink: string) => void;
-  onKeep: (id: number) => void;
+  onKeepChange: (id: number, keep: boolean) => void;
 }
 
-export function GiftCard({ gift, onUpdateLink, onKeep }: GiftCardProps) {
+export function GiftCard({ gift, onUpdateLink, onKeepChange }: GiftCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const safeHref = useMemo(() => {
@@ -30,8 +30,12 @@ export function GiftCard({ gift, onUpdateLink, onKeep }: GiftCardProps) {
   }, []);
 
   return (
-    <div ref={cardRef} className="group relative z-10 overflow-hidden rounded-2xl border border-roseSoft/80 bg-white shadow-lg 
-          shadow-pink-200/40 transition-transform duration-200 hover:scale-[1.03] hover:-rotate-1">
+    <div ref={cardRef} className={`group relative z-10 overflow-hidden rounded-2xl border shadow-lg 
+          transition-transform duration-200 hover:scale-[1.03] hover:-rotate-1 ${
+      gift.keepConfirmed
+        ? " bg-rose-200 shadow-pink-300/60 ring-2 ring-rosePrimary/30"
+        : " bg-white shadow-rose-200/40"
+    }`}>
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-roseSoft/50 blur-2xl" />
       <div className="relative p-5">
         <div className="flex items-start justify-between gap-3">
@@ -43,27 +47,21 @@ export function GiftCard({ gift, onUpdateLink, onKeep }: GiftCardProps) {
           </div>
 
           {gift.keepConfirmed ? (
-            <div className="shrink-0 rounded-full bg-cream px-3 py-1 text-xs font-semibold text-accentRed">
+            <div className="absolute top-2 right-2 shrink-0 rounded-full bg-cream px-3 py-1 text-xs font-semibold text-accentRed">
               Kept
             </div>
           ) : null}
         </div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-roseSoft/70 bg-linear-to-br from-rose-100 to-pink-50">
-          {gift.imageSrc ? (
+        {gift.imageSrc && gift.status === "selected" && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-roseSoft/70 bg-linear-to-br from-rose-100 to-pink-50">
             <div className="relative aspect-square">
               <Image src={gift.imageSrc} alt={gift.title} fill className="object-cover"
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 priority={gift.id <= 3}
               />
             </div>
-          ) : (
-            <div className="flex aspect-square items-center justify-center">
-              <div className="rounded-2xl bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg shadow-pink-200/20">
-                add a cute pic
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -82,12 +80,18 @@ export function GiftCard({ gift, onUpdateLink, onKeep }: GiftCardProps) {
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => setModalOpen(true)} className="w-full rounded-2xl border border-roseSoft/90 bg-white px-4 py-3 
                 text-sm font-semibold text-slate-700 shadow-lg shadow-pink-200/20 transition-transform active:scale-[0.98]">
-            Change this
+            {safeHref ? "Change this" : "Add link"}
           </button>
-          <button type="button" onClick={() => onKeep(gift.id)} disabled={!!gift.keepConfirmed}
-            className="w-full rounded-2xl bg-rose px-4 py-3 text-sm font-semibold text-black shadow-lg shadow-pink-200/40 transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-rosePrimary disabled:text-gray-300 disabled:opacity-100"
+          <button
+            type="button"
+            onClick={() => onKeepChange(gift.id, !gift.keepConfirmed)}
+            className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold shadow-lg shadow-pink-200/40 transition-transform active:scale-[0.98] ${
+              gift.keepConfirmed
+                ? "bg-rose-300 text-black"
+                : "border border-roseSoft/90 bg-white text-slate-700 shadow-pink-200/20"
+            }`}
           >
-            {gift.keepConfirmed ? "Kept ✓" : "Keep this"}
+            {gift.keepConfirmed ? "Keeping ✓" : "Not keeping"}
           </button>
         </div>
       </div>

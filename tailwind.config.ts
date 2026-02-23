@@ -15,8 +15,8 @@ export default {
         accentRed: "#BE123C",
       },
       fontFamily: {
-        heading: ["\"Betania Patmos In\"", "cursive"],
-        body: ["\"Betania Patmos In\"", "cursive"],
+        heading: ["var(--font-sour-gummy)", "sans-serif"],
+        body: ["var(--font-sour-gummy)", "sans-serif"],
       },
     },
   },
